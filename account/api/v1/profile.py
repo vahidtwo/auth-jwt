@@ -2,17 +2,15 @@ import logging
 import os
 import random
 
-from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.contrib.sites.shortcuts import get_current_site
 from django.http import HttpResponsePermanentRedirect
 from django.urls import reverse
-from django.utils.encoding import smart_str, smart_bytes, DjangoUnicodeDecodeError
-from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from account.api.v1.repository import URLForgetPassword
 from account.models import User, OTP
 from account.serializers import (
     RegisterSerializer,
@@ -52,6 +50,7 @@ class RegisterView(generics.GenericAPIView):
 
 class RequestPasswordResetEmail(generics.GenericAPIView):
     serializer_class = ResetPasswordEmailRequestSerializer
+    logger = logger
 
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
@@ -61,13 +60,8 @@ class RequestPasswordResetEmail(generics.GenericAPIView):
 
         if User.objects.filter(email=email).exists():
             user = User.objects.get(email=email)
-            uidb64 = urlsafe_base64_encode(smart_bytes(user.id))
-            token = PasswordResetTokenGenerator().make_token(user)
             current_site = get_current_site(request=request).domain
-            relative_link = reverse(
-                "password-reset-confirm", kwargs={"uidb64": uidb64, "token": token}
-            )
-            abs_url = "http://" + current_site + relative_link
+            abs_url = URLForgetPassword.create_token(user, current_site)
             print(f"password verification url is {abs_url}")
         return Response(
             {"message": "We have sent you a link to reset your password"},
@@ -81,50 +75,33 @@ class PasswordTokenCheckAPI(generics.GenericAPIView):
 
     def get(self, request, uidb64, token):
 
-        redirect_url = request.GET.get("redirect_url")
-        try:
-            _id = smart_str(urlsafe_base64_decode(uidb64))
-            user = User.objects.get(id=_id)
-
-            if not PasswordResetTokenGenerator().check_token(user, token):
-                if len(redirect_url) > 3:
-                    return CustomRedirect(redirect_url + "?token_valid=False")
-                else:
-                    return CustomRedirect(
-                        os.environ.get("FRONTEND_URL", "") + "?token_valid=False"
-                    )
-
-            if redirect_url and len(redirect_url) > 3:
+        redirect_url = request.GET.get("redirect_url", "")
+        if not URLForgetPassword.check_token(uidb64, token):
+            if len(redirect_url) > 3:
+                return CustomRedirect(redirect_url + "?token_valid=False")
+            else:
                 return CustomRedirect(
-                    redirect_url
+                    os.environ.get("FRONTEND_URL", "") + "?token_valid=False"
+                )
+        if redirect_url and len(redirect_url) > 3:
+            return CustomRedirect(
+                redirect_url
+                + "?token_valid=True&message=Credentials Valid&uidb64="
+                + uidb64
+                + "&token="
+                + token
+            )
+        else:
+            return CustomRedirect(
+                os.environ.get(
+                    "FRONTEND_URL",
+                    reverse("password-reset-complete")
                     + "?token_valid=True&message=Credentials Valid&uidb64="
                     + uidb64
                     + "&token="
-                    + token
+                    + token,
                 )
-            else:
-                return CustomRedirect(
-                    os.environ.get(
-                        "FRONTEND_URL",
-                        reverse("password-reset-complete")
-                        + "?token_valid=True&message=Credentials Valid&uidb64="
-                        + uidb64
-                        + "&token="
-                        + token,
-                    )
-                )
-
-        except DjangoUnicodeDecodeError as identifier:
-            try:
-                if not PasswordResetTokenGenerator().check_token(user):
-                    return CustomRedirect(redirect_url + "?token_valid=False")
-
-            except UnboundLocalError as e:
-
-                return Response(
-                    {"error": "Token is not valid, please request a new one"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+            )
 
 
 class ForgetPasswordAPIView(generics.GenericAPIView):

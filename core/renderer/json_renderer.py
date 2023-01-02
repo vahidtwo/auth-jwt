@@ -28,4 +28,4 @@ class JSONRenderer(BaseRenderer):
         else:
             response_dict["data"] = data
         data = response_dict
-        return json.dumps(data)
+        return json.dumps(data).encode()

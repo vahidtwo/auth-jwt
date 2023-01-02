@@ -92,7 +92,7 @@ class SetNewPasswordSerializer(serializers.ModelSerializer):
 
         except TokenError:
             self.fail("bad_token")
-        instance.set_password(validated_data['password'])
+        instance.set_password(validated_data["password"])
         instance.save()
         return instance
 
@@ -113,12 +113,11 @@ class ForgetPasswordSerializer(serializers.Serializer):
 
             _id = force_str(urlsafe_base64_decode(uidb64))
             user = User.objects.get(id=_id)
-            RefreshToken(user.tokens["access"]).blacklist()
             if not PasswordResetTokenGenerator().check_token(user, token):
                 raise AuthenticationFailed("The reset link is invalid", 401)
-
             user.set_password(password)
             user.save()
+            RefreshToken(user.tokens["access"]).blacklist()
 
             return user
         except Exception as e:

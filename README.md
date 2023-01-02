@@ -1,4 +1,4 @@
-Simple Authentication user
+Simple Authentication user using JWT 
 
 ## Installation steps
 
@@ -21,3 +21,7 @@ Simple Authentication user
 
 - With `docker`
     Run docker compose using `docker-compose up`
+
+### Documentation
+Swagger url : `{server}/api/schema/swagger-ui/`
+Swagger doc : `{server}/api/schema/redoc/`

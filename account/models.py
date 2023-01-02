@@ -76,6 +76,10 @@ class User(AbstractBaseUser, PermissionsMixin, AbstractBaseModel):
     def __str__(self):
         return self.email
 
+    @property
+    def full_name(self):
+        return f'{self.first_name} {self.last_name}'
+
     def tokens(self):
         refresh = RefreshToken.for_user(self)
         return {"refresh": str(refresh), "access": str(refresh.access_token)}

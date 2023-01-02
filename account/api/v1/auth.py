@@ -21,6 +21,7 @@ from account.task import send_otp_verification
 logger = logging.getLogger(__name__)
 
 
+@extend_schema(tags=["Auth"])
 class RequestOTP(views.APIView):
     logger = logger
     mobile_number_config = openapi.Parameter(
@@ -57,6 +58,7 @@ class RequestOTP(views.APIView):
         return Response({"message": message})
 
 
+@extend_schema(tags=["Auth"])
 class VerifyEmail(views.APIView):
     logger = logger
 
@@ -92,6 +94,7 @@ class VerifyEmail(views.APIView):
             )
 
 
+@extend_schema(tags=["Auth"])
 class VerifyMobile(generics.GenericAPIView):
     logger = logger
     serializer_class = ConfirmOTPSerializer
@@ -111,6 +114,7 @@ class VerifyMobile(generics.GenericAPIView):
         )
 
 
+@extend_schema(tags=["Auth"])
 class LoginAPIView(generics.GenericAPIView):
     serializer_class = LoginSerializer
     logger = logger
@@ -121,6 +125,7 @@ class LoginAPIView(generics.GenericAPIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+@extend_schema(tags=["Auth"])
 class LogoutAPIView(generics.GenericAPIView):
     logger = logger
     serializer_class = LogoutSerializer
