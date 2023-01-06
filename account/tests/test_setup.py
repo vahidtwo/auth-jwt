@@ -22,5 +22,8 @@ class TestSetUp(APITestCase):
 
         return super().setUp()
 
+    def login_user(self):
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer {}".format(self.user.tokens()["access"]))
+
     def tearDown(self):
         return super().tearDown()

@@ -7,9 +7,11 @@ from django.utils.encoding import (
 from django.utils.http import urlsafe_base64_decode
 from rest_framework import serializers
 from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.serializers import ModelSerializer
 from rest_framework_simplejwt.tokens import RefreshToken, TokenError
 
 from core.validator import mobile_number_validation
+from .api.v1.repository import SendOTP, SendVerifyEmail
 from .models import User, OTP
 
 
@@ -167,7 +169,31 @@ class ConfirmOTPSerializer(serializers.Serializer):
         return attrs
 
     def matched(self):
+        """
+        set this otp used
+        """
         if self.instance is not None and self.instance.exists():
             obj = self.instance.first()
             obj.is_matched = True
             obj.save()
+        """
+        it can be implement with redis 
+        """
+
+
+class UserProfile(ModelSerializer):
+    class Meta:
+        fields = ('id', 'first_name', 'last_name', 'mobile_number', 'email')
+        model = User
+
+    def validate(self, attrs):
+        email = attrs.get('email')
+        mobile_number = attrs.get('mobile_number')
+        if email is not None and self.instance.email != email:
+            self.instance.is_verified_email = False
+            SendVerifyEmail.send(self.context['request'], self.instance)
+        if mobile_number is not None and self.instance.mobile_number != mobile_number:
+            self.instance.is_verified_mobile = False
+            SendOTP.send(mobile_number)
+        self.instance.save()
+        return attrs

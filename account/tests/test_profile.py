@@ -32,3 +32,32 @@ class TestProfileAPIS(TestSetUp):
         res = self.client.get(reverse("password-reset-confirm", args=(uidb64, token)))
         self.assertEqual(res.status_code, 301)
         self.assertTrue("token_valid=False" in res.url)
+
+    def test_get_profile(self):
+        url = reverse("profile")
+        self.login_user()
+        res = self.client.get(url)
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()['data']['first_name'], self.user.first_name)
+
+    def test_update_profile(self):
+        url = reverse("profile")
+        payload = {
+            "first_name": self.fake.first_name(),
+            "last_name": self.fake.last_name(),
+            "mobile_number": f'09{self.fake.random_number(9)}',
+            "email": self.fake.email()
+        }
+        self.login_user()
+        self.user.is_verified_email = True
+        self.user.is_verified_mobile = True
+        self.user.save()
+        res = self.client.put(url, data=payload, type='json')
+        self.assertEqual(res.status_code, 200)
+        self.user.refresh_from_db()
+        self.assertEqual(payload['first_name'], self.user.first_name)
+        self.assertEqual(payload['last_name'], self.user.last_name)
+        self.assertEqual(payload['mobile_number'], self.user.mobile_number)
+        self.assertEqual(payload['email'], self.user.email)
+        self.assertEqual(self.user.is_verified_mobile, False)
+        self.assertEqual(self.user.is_verified_email, False)

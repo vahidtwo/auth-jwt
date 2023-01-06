@@ -12,8 +12,10 @@ from account.api.v1 import (
     PasswordTokenCheckAPI,
     RequestPasswordResetEmail,
     RequestOTP,
-    VerifyMobile, SetNewPasswordAPIView,
+    VerifyMobile,
+    SetNewPasswordAPIView,
 )
+from account.api.v1.profile import ProfileView
 
 urlpatterns = [
     path("register", RegisterView.as_view(), name="register"),
@@ -39,4 +41,14 @@ urlpatterns = [
         name="password-reset-complete",
     ),
     path("new-password", SetNewPasswordAPIView.as_view(), name="set_new_password"),
+    path(
+        "profile",
+        ProfileView.as_view(
+            {
+                "get": "get_profile",
+                "put": "update_profile",
+            }
+        ),
+        name="profile",
+    ),
 ]

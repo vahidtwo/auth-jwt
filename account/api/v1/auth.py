@@ -10,13 +10,13 @@ from rest_framework import generics, status, views
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from account.api.v1.repository import SendOTP
 from account.models import User, OTP
 from account.serializers import (
     LoginSerializer,
     LogoutSerializer,
     ConfirmOTPSerializer,
 )
-from account.task import send_otp_verification
 
 logger = logging.getLogger(__name__)
 
@@ -44,18 +44,8 @@ class RequestOTP(views.APIView):
     )
     def get(self, request):
         mobile_number = request.GET.get("mobile_number")
-        get_object_or_404(User, mobile_number=mobile_number)
-        otp = OTP.objects.filter(mobile_number=mobile_number)
-        if not otp.exists() or (otp.exists() and otp.first().expired):
-            otp = OTP.objects.create(
-                mobile_number=mobile_number, otp=str(random.randint(1111, 9999))
-            )
-            message = "OTP send successfully"
-        else:
-            otp = otp.first()
-            message = "OTP sent if you dont receive please try 2 min later"
-        send_otp_verification.delay(otp.otp)
-        return Response({"message": message})
+        msg = SendOTP.send(mobile_number)
+        return Response({"message": msg})
 
 
 @extend_schema(tags=["Auth"])

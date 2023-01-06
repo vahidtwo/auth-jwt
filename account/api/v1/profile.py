@@ -6,17 +6,18 @@ from django.contrib.sites.shortcuts import get_current_site
 from django.http import HttpResponsePermanentRedirect
 from django.urls import reverse
 from rest_framework import generics, status
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-
-from account.api.v1.repository import URLForgetPassword
+from rest_framework.viewsets import GenericViewSet
+from account.api.v1.repository import URLForgetPassword, SendOTP, SendVerifyEmail
 from account.models import User, OTP
 from account.serializers import (
     RegisterSerializer,
     ForgetPasswordSerializer,
     ResetPasswordEmailRequestSerializer,
-    SetNewPasswordSerializer,
+    SetNewPasswordSerializer, UserProfile,
 )
 from account.task import send_otp_verification, send_url_verification
 
@@ -36,15 +37,8 @@ class RegisterView(generics.GenericAPIView):
         serializer = self.serializer_class(data=user)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
-        token = RefreshToken.for_user(user).access_token
-        current_site = get_current_site(request).domain
-        relative_link = reverse("email-verify")
-        abs_url = "http://" + current_site + relative_link + "?token=" + str(token)
-        otp = OTP.objects.create(
-            mobile_number=user.mobile_number, otp=str(random.randint(1111, 9999))
-        )
-        send_otp_verification.delay(otp.otp)
-        send_url_verification.delay(abs_url)
+        SendOTP.send(user.mobile_number)
+        SendVerifyEmail.send(request, user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -134,3 +128,20 @@ class SetNewPasswordAPIView(generics.GenericAPIView):
             {"data": user.tokens(), "message": "Password update success"},
             status=status.HTTP_200_OK,
         )
+
+
+class ProfileView(GenericViewSet):
+    permission_classes = (IsAuthenticated,)
+    logger = logger
+    serializer_class = UserProfile
+
+    @action(detail=False, methods=['get'])
+    def get_profile(self, request):
+        return Response(self.get_serializer(request.user).data)
+
+    @action(detail=False, methods=['put'])
+    def update_profile(self, request):
+        ser = self.get_serializer(request.user, data=request.data, partial=True)
+        ser.is_valid(raise_exception=True)
+        ser.save()
+        return Response({"message": "profile update successfully"})
