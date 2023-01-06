@@ -12,7 +12,14 @@ Simple Authentication user using JWT
 
 5. Install the dependencies using `pip install -r requirements.txt`
 
-#### Run steps
+### Run steps
+create your environment by create .env file
+
+copy from: `cp .env-sample .env`
+
+edit it: `vim .env`
+
+#### Then run with
 - With `manage.py`
   1. Migrate existing db tables by running `python manage.py migrate`
 
@@ -20,7 +27,8 @@ Simple Authentication user using JWT
 
 
 - With `docker`
-    Run docker compose using `docker-compose up`
+    1. create a env file from postgresql/.env-sample
+    2. Run docker compose using `docker-compose up`
 
 ### Documentation
 Swagger url : `{server}/api/schema/swagger-ui/`
